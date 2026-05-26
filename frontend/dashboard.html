@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Nutrition-Aware Recipe Recommendation System</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🍽️ Nutrition-Aware Recipe Recommendation System</h1>
+                <nav class="nav">
+                    <button class="nav-btn active" data-page="home">Dashboard</button>
+                    <button class="nav-btn" data-page="recommendations">Recommendations</button>
+                    <button class="nav-btn" data-page="evaluation">Evaluation</button>
+                    <button class="nav-btn" data-page="recipes">Recipes</button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Home/Dashboard Page -->
+            <section id="home" class="page active">
+                <div class="dashboard-grid">
+                    <!-- Statistics Cards -->
+                    <div class="stats-container">
+                        <div class="stat-card">
+                            <h3>Total Recommendations</h3>
+                            <p class="stat-value" id="total-recommendations">0</p>
+                            <span class="stat-label">Generated so far</span>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Rated Recommendations</h3>
+                            <p class="stat-value" id="total-rated">0</p>
+                            <span class="stat-label">User feedback</span>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Average Rating</h3>
+                            <p class="stat-value" id="average-rating">0.0</p>
+                            <span class="stat-label">Out of 5 stars</span>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Active Users</h3>
+                            <p class="stat-value" id="active-users">0</p>
+                            <span class="stat-label">Using the system</span>
+                        </div>
+                    </div>
+
+                    <!-- Charts -->
+                    <div class="charts-container">
+                        <div class="chart-box">
+                            <h3>Rating Distribution</h3>
+                            <canvas id="ratingChart"></canvas>
+                        </div>
+                        <div class="chart-box">
+                            <h3>Model Performance Metrics</h3>
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recommendations Page -->
+            <section id="recommendations" class="page">
+                <div class="form-section">
+                    <h2>Get Personalized Recommendations</h2>
+                    <form id="recommendation-form" class="form">
+                        <div class="form-group">
+                            <label for="user-id">User ID:</label>
+                            <input type="text" id="user-id" name="user-id" placeholder="Enter your user ID" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="num-recommendations">Number of Recommendations:</label>
+                            <input type="number" id="num-recommendations" name="num-recommendations" value="5" min="1" max="20">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Get Recommendations</button>
+                    </form>
+                </div>
+
+                <div id="recommendations-container" class="recommendations-container">
+                    <!-- Recommendations will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Model Evaluation Page -->
+            <section id="evaluation" class="page">
+                <div class="evaluation-container">
+                    <h2>Model Evaluation & Performance</h2>
+                    
+                    <div class="metrics-grid">
+                        <div class="metric-box">
+                            <h4>Accuracy</h4>
+                            <p class="metric-value" id="metric-accuracy">-</p>
+                        </div>
+                        <div class="metric-box">
+                            <h4>Precision</h4>
+                            <p class="metric-value" id="metric-precision">-</p>
+                        </div>
+                        <div class="metric-box">
+                            <h4>Recall</h4>
+                            <p class="metric-value" id="metric-recall">-</p>
+                        </div>
+                        <div class="metric-box">
+                            <h4>F1-Score</h4>
+                            <p class="metric-value" id="metric-f1">-</p>
+                        </div>
+                        <div class="metric-box">
+                            <h4>RMSE</h4>
+                            <p class="metric-value" id="metric-rmse">-</p>
+                        </div>
+                        <div class="metric-box">
+                            <h4>MAE</h4>
+                            <p class="metric-value" id="metric-mae">-</p>
+                        </div>
+                    </div>
+
+                    <div class="chart-box full-width">
+                        <h3>Model Performance Over Time</h3>
+                        <canvas id="metricsTimelineChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recipes Page -->
+            <section id="recipes" class="page">
+                <div class="form-section">
+                    <h2>Recipe Database</h2>
+                    <button id="load-recipes-btn" class="btn btn-primary">Load Recipes</button>
+                </div>
+
+                <div id="recipes-container" class="recipes-container">
+                    <!-- Recipes will be loaded here -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2024-2026 Nutrition-Aware Recipe Recommendation System | Capstone Project</p>
+        </footer>
+    </div>
+
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>
