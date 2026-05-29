@@ -14,7 +14,7 @@ Hal ini mengakibatkan model CF—yang sangat bergantung pada matriks interaksi y
 
 ## 2. Metodologi Data (The Fix)
 
-Untuk melatih dan mengevaluasi model CF dengan tepat, dilakukan pembuatan ulang skema pembagian data (*data split*) secara langsung dari `RAW_interactions.csv` (`cf/build_split.py`).
+Untuk melatih dan mengevaluasi model CF dengan tepat, dilakukan pembuatan ulang skema pembagian data (*data split*) secara langsung dari `RAW_interactions.csv` (`01_build_cf_split.ipynb`).
 
 1. **Penyaringan (Co-filtering)**:
    - Pengguna dengan **kurang dari 5 interaksi** dihapus.
@@ -26,20 +26,15 @@ Untuk melatih dan mengevaluasi model CF dengan tepat, dilakukan pembuatan ulang 
    - **Validation Set**: Interaksi kedua terakhir dari setiap pengguna.
    - **Train Set**: Sisa riwayat interaksi pengguna sebelumnya.
 
-Melalui desain ini, 99.9% resep yang muncul di Validation/Test set sudah dipelajari (*observed*) di Train set.
+Melalui desain ini, 99.8% resep yang muncul di Validation/Test set sudah dipelajari (*observed*) di Train set.
 
 ## 3. Algoritma Model
 
-Modul ini mengevaluasi dua algoritma Matrix Factorization unggulan untuk data *implicit feedback*:
-1. **Alternating Least Squares (ALS)**: 
-   - Meminimalkan *confidence-weighted squared error*.
-   - Menggunakan parameter `alpha` untuk mengontrol bobot item yang berinteraksi berbanding non-interaksi.
-   - Sangat optimal untuk matriks yang sangat jarang (*extremely sparse*).
-2. **Bayesian Personalized Ranking (BPR)**:
-   - Menggunakan pendekatan *pairwise ranking*. 
-   - Model belajar untuk memberikan skor lebih tinggi pada item yang diinteraksikan dibandingkan sampel negatif acak.
-
-*(Implementasi model dibungkus dari library C++ `implicit` yang dimodifikasi khusus untuk mencegah masalah bottleneck performa threading akibat OpenBLAS).*
+Modul ini mengevaluasi beberapa algoritma Matrix Factorization dan Neural Network unggulan untuk data *implicit feedback*:
+1. **Alternating Least Squares (ALS)**: Meminimalkan *confidence-weighted squared error*.
+2. **Bayesian Personalized Ranking (BPR)**: Menggunakan pendekatan *pairwise ranking*. 
+3. **Singular Value Decomposition (SVD)**: MF klasik dengan injeksi sampel negatif (via `scikit-surprise`).
+4. **Neural Collaborative Filtering (NCF)**: Arsitektur *Deep Learning* (GMF + MLP) menggunakan PyTorch.
 
 ## 4. Evaluasi & Metrik
 
@@ -47,30 +42,31 @@ Pengujian dilakukan menggunakan protokol standar Leave-One-Out:
 - **Kandidat Test**: 1 item positif (ground truth) dicampur dengan 99 item negatif (sampel acak yang tidak ada di riwayat pengguna).
 - **Metrik Utama**: Hit Rate pada K (HR@5, HR@10, HR@20) dan Mean Reciprocal Rank (MRR).
 
-## 5. Hasil Eksperimen (Full Grid Search)
+## 5. Hasil Eksperimen (Final Comparison)
 
-*Hyperparameter Tuning* skala penuh dilakukan untuk membandingkan ALS dan BPR di berbagai konfigurasi (`factors`, `regularization`, `alpha`, `iterations`, `learning rate`).
+Berikut adalah perbandingan performa antar model setelah dilakukan *hyperparameter tuning* (quick grid search):
 
-### Ringkasan Perbandingan Performa Akhir di Test Set
+### Ringkasan Performa di Test Set
 
-| Model | HR@5 | HR@10 | HR@20 | MRR | Best Configuration |
-| :--- | :---: | :---: | :---: | :---: | :--- |
-| **ALS** ⭐ | **0.3851** | **0.4653** | **0.5603** | **0.2947** | `factors=32`, `reg=0.01`, `iter=50`, `alpha=40.0` |
-| BPR | 0.2510 | 0.3629 | 0.5207 | 0.1857 | `factors=128`, `lr=0.05`, `reg=0.01`, `iter=200` |
+| Model | HR@5 | HR@10 | HR@20 | MRR |
+| :--- | :---: | :---: | :---: | :---: |
+| **NCF** ⭐ | **0.4172** | **0.5201** | **0.6303** | **0.3095** |
+| **SVD** | 0.4096 | 0.5140 | 0.6184 | 0.2996 |
+| ALS | 0.3849 | 0.4654 | 0.5602 | 0.2951 |
+| BPR | 0.2555 | 0.3643 | 0.5064 | 0.1905 |
 
 ### Analisis Hasil
-1. **Keunggulan Mutlak ALS**: ALS terbukti secara signifikan lebih baik dibandingkan BPR untuk dataset ini. Kemampuan ALS dalam memodelkan intensitas ketertarikan (via nilai `alpha`) bekerja sangat baik pada sparsity dataset yang mencapai ~99.96%.
-2. **Latent Factors Kecil = Lebih Baik (ALS)**: Konfigurasi ALS terbaik menggunakan dimensi faktor (`factors`) yang relatif kecil yaitu 32. Ukuran laten yang terlalu besar (`factors=128`) justru menyebabkan *overfitting* karena jumlah interaksi di training data yang terbatas.
-3. **Konvergensi BPR Lambat**: BPR membutuhkan dimensi sangat besar (`factors=128`) dan epoch tinggi (`iterations=200`) untuk bisa menangkap sinyal dari pasangan *positive-negative*.
+1. **Keunggulan NCF**: NCF memberikan hasil tertinggi di semua metrik, membuktikan efektivitas Deep Learning dalam menangkap interaksi kompleks antara pengguna dan resep.
+2. **SVD yang Stabil**: SVD menunjukkan performa yang sangat kompetitif dan hampir menyamai NCF, memperlihatkan bahwa MF klasik tetap kuat jika ditangani dengan sampel negatif yang tepat.
+3. **Threshold Performa**: Hasil HR@10 di atas 0.5 menunjukkan sistem berhasil menempatkan resep yang benar-benar disukai pengguna dalam daftar 10 rekomendasi teratas pada lebih dari 50% kasus pengujian.
 
-Model terbaik (ALS) diekspor dan disimpan untuk digunakan pada sistem *Hybrid Recommendation*.
+Model terbaik (**NCF**) dipilih sebagai komponen utama tahap *candidate generation* untuk sistem *Hybrid Recommendation*.
 
-## 6. Struktur Folder dan Penggunaan
+## 6. Struktur Kode & Penggunaan
 
-- `cf/build_split.py`: Skrip untuk mengeksekusi LOO splitting mentah dari CSV awal.
-- `cf/data_prep.py`: Pemrosesan memori, pembuatan *sparse matrix* dan batching sampel negatif.
-- `cf/evaluator.py`: Skrip yang menghitung performa (HR@K & MRR).
-- `cf/train.py`: Otomatisasi Grid-Search, Training, dan Evaluasi.
-- `cf/evaluate.py`: Skrip evaluasi *standalone* untuk me-load model yang telah dilatih `.pkl` dan memvalidasi ke data set *test*.
-- `cf/models/`: Struktur modular kelas `ALSModel` dan `BPRModel`.
-- `cf/outputs/`: Lokasi penyimpanan matriks *split*, metrik `.csv`, dan bobot model akhir (`best_cf_model.pkl`).
+- `cf/01_build_cf_split.ipynb`: Notebook pembuatan data split LOO.
+- `cf/02_train_evaluate_cf.ipynb`: Notebook eksperimen training & evaluasi model.
+- `cf/data_prep.py`: Utilitas pemrosesan matriks dan data.
+- `cf/evaluator.py`: Metrik evaluasi (HR, MRR).
+- `cf/models/`: Folder berisi implementasi modular `ALSModel`, `BPRModel`, `SVDModel`, dan `NCFModel`.
+- `cf/outputs/`: Folder berisi hasil split data, CSV metrik, dan model terbaik yang disimpan.
