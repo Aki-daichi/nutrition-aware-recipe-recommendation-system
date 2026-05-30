@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: nutrition_recipe_db
     ports:
-      - "5432:5432"
+      - "5433:5433"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -27,7 +27,7 @@ services:
     container_name: nutrition_recipe_api
     command: python backend/main.py
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/nutrition_recipe_db
+      - DATABASE_URL=postgresql://postgres:overlord123@postgres:5433/nutrition_recipe_db
       - DEBUG=True
       - HOST=0.0.0.0
       - PORT=8000
