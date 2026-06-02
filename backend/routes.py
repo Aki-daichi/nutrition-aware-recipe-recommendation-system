@@ -1,13 +1,18 @@
 """FastAPI recommendation system routes"""
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import Header
 from sqlalchemy.orm import Session
 from .database import get_db
 from . import models
 from . import schemas
-from typing import List
+from typing import List, Optional
+
+import uuid
+import hashlib
 
 from .config import MODEL_FILENAME, MODEL_PATH, PICKLE_PATH
 from .pipeline import CFRecipeRecommendationPipeline
+
 
 router = APIRouter(prefix="/api", tags=["recommendations"])
 
@@ -44,14 +49,103 @@ def create_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
     return db_recipe
 
 
-# ==================== User Preferences Endpoints ====================
+# ==================== Auth (simple account system) ====================
+
+
+def _get_current_username(x_username: Optional[str]) -> str:
+    if not x_username:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing X-Username header")
+    return x_username
+
+
+def _hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+
+@router.post("/register")
+def register(request: schemas.UserRegisterRequest, db: Session = Depends(get_db)):
+    existing = db.query(models.User).filter(models.User.username == request.username).first()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
+
+    user_id = str(uuid.uuid4())
+    user = models.User(id=user_id, username=request.username, password_hash=_hash_password(request.password))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return schemas.UserRegisterResponse(user_id=user.id, username=user.username)
+
+
+@router.post("/login")
+def login(request: schemas.UserLoginRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == request.username).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+    if user.password_hash != _hash_password(request.password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+    # No JWT/session: simple demo token = username
+    return schemas.UserLoginResponse(username=user.username, user_id=user.id)
+
+
+def _get_current_user(x_username: Optional[str], db: Session) -> models.User:
+    username = _get_current_username(x_username)
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user")
+    return user
+
+
+# ==================== User Profile / Preferences ====================
+@router.get("/me", response_model=schemas.UserProfile)
+def get_me(
+    x_username: Optional[str] = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    user = _get_current_user(x_username, db)
+    return schemas.UserProfile(id=user.id, username=user.username)
+
+
+@router.get("/me/preferences", response_model=schemas.UserPreference)
+def get_my_preferences(
+    x_username: Optional[str] = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    user = _get_current_user(x_username, db)
+    preference = db.query(models.UserPreference).filter(models.UserPreference.user_id == user.id).first()
+    if not preference:
+        raise HTTPException(status_code=404, detail="User preferences not found")
+    return preference
+
+
+@router.post("/me/preferences", response_model=schemas.UserPreference)
+def upsert_my_preferences(
+    preference: schemas.UserPreferenceBase,
+    x_username: Optional[str] = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    user = _get_current_user(x_username, db)
+
+    db_preference = db.query(models.UserPreference).filter(models.UserPreference.user_id == user.id).first()
+
+    if db_preference:
+        for key, value in preference.dict().items():
+            setattr(db_preference, key, value)
+    else:
+        db_preference = models.UserPreference(user_id=user.id, **preference.dict())
+        db.add(db_preference)
+
+    db.commit()
+    db.refresh(db_preference)
+    return db_preference
+
+
+# Backward-compatible (still supported): preferences by user_id
 @router.get("/users/{user_id}/preferences", response_model=schemas.UserPreference)
 def get_user_preferences(user_id: str, db: Session = Depends(get_db)):
-    """Get user preferences"""
-    preference = db.query(models.UserPreference).filter(
-        models.UserPreference.user_id == user_id
-    ).first()
-    
+    preference = db.query(models.UserPreference).filter(models.UserPreference.user_id == user_id).first()
     if not preference:
         raise HTTPException(status_code=404, detail="User preferences not found")
     return preference
@@ -63,31 +157,28 @@ def create_or_update_user_preferences(
     preference: schemas.UserPreferenceBase,
     db: Session = Depends(get_db)
 ):
-    """Create or update user preferences"""
-    db_preference = db.query(models.UserPreference).filter(
-        models.UserPreference.user_id == user_id
-    ).first()
-    
+    db_preference = db.query(models.UserPreference).filter(models.UserPreference.user_id == user_id).first()
+
     if db_preference:
-        # Update existing preferences
         for key, value in preference.dict().items():
             setattr(db_preference, key, value)
     else:
-        # Create new preferences
         db_preference = models.UserPreference(user_id=user_id, **preference.dict())
         db.add(db_preference)
-    
+
     db.commit()
     db.refresh(db_preference)
     return db_preference
 
 
 # ==================== Recommendations Endpoints ====================
+
 @router.post("/recommendations", response_model=schemas.RecommendationResponse)
 def get_recommendations(
     request: schemas.GetRecommendationsRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+
     """
     Get personalized recipe recommendations for a user
     

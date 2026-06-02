@@ -124,6 +124,32 @@ class ModelEvaluation(ModelEvaluationBase):
 
 
 # Request/Response schemas
+
+class UserRegisterRequest(BaseModel):
+    username: str
+    password: str
+
+
+class UserRegisterResponse(BaseModel):
+    user_id: str
+    username: str
+
+
+class UserLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class UserLoginResponse(BaseModel):
+    user_id: str
+    username: str
+
+
+class UserProfile(BaseModel):
+    id: str
+    username: str
+
+
 class GetRecommendationsRequest(BaseModel):
     """Request schema for getting recommendations"""
     user_id: str
@@ -134,3 +160,4 @@ class RecommendationResponse(BaseModel):
     """Response schema for recommendations"""
     recommendations: List[Recommendation]
     total_count: int
+
