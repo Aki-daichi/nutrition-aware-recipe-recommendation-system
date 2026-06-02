@@ -37,7 +37,7 @@ Common variables:
 5. Seed sample data:
    - `python seed_db.py`
 6. Run server:
-   - `python backend/main.py`
+   - `python -m backend.main`
 
 Access:
 - Dashboard: `http://localhost:8000/dashboard`
