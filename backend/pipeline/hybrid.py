@@ -5,6 +5,9 @@ from typing import Any
 
 import numpy as np
 
+from backend.pipeline.cbf import score_cbf
+from backend.pipeline.nutrition import extract_nutrition_values, nutrition_score_from_values
+
 
 @dataclass
 class HybridArtifacts:
@@ -38,11 +41,10 @@ def run_hybrid(
 ) -> list[dict[str, Any]]:
     # Stage 2: CBF reranking
     candidate_ids = [x["recipe_id"] for x in candidate_cf]
-    cbf_scored = cbf_artifacts and __import__("backend.pipeline.cbf", fromlist=["score_cbf"]).score_cbf(
-        cbf_artifacts,
-        candidate_ids,
-        past_recipe_ids,
-    )
+    if cbf_artifacts is not None:
+        cbf_scored = score_cbf(cbf_artifacts, candidate_ids, past_recipe_ids)
+    else:
+        cbf_scored = [{"recipe_id": rid, "similarity_score": 0.0} for rid in candidate_ids]
 
     sim_map = {x["recipe_id"]: float(x["similarity_score"]) for x in cbf_scored}
 
@@ -55,8 +57,8 @@ def run_hybrid(
         if not row:
             continue
         nutrition_arr = row["nutrition"]
-        values = __import__("backend.pipeline.nutrition", fromlist=["extract_nutrition_values"]).extract_nutrition_values(nutrition_arr)
-        nutrition_score = __import__("backend.pipeline.nutrition", fromlist=["nutrition_score_from_values"]).nutrition_score_from_values(
+        values = extract_nutrition_values(nutrition_arr)
+        nutrition_score = nutrition_score_from_values(
             nutrition_artifacts.scorer, values
         )
 
@@ -102,5 +104,9 @@ def run_hybrid(
         r["dominant_signal"] = dominant
 
     results.sort(key=lambda x: x["final_score"], reverse=True)
+
+    for i, r in enumerate(results, start=1):
+        r["rank"] = i
+
     return results
 

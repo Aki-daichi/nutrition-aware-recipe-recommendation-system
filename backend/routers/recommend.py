@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..database import get_pool
 from ..models.schemas import RecommendRequest, RecommendResponse
+from ..pipeline.cf import cf_fallback_candidates
 
 router = APIRouter(prefix="", tags=["recommend"])
 
@@ -19,6 +20,16 @@ async def _fetch_user_history(pool: asyncpg.Pool, user_id: int) -> list[dict[str
         WHERE user_id=$1 AND rating>0
         """,
         user_id,
+    )
+    return [dict(r) for r in rows]
+
+
+async def _fetch_interactions(pool: asyncpg.Pool) -> list[dict[str, Any]]:
+    rows = await pool.fetch(
+        """
+        SELECT user_id, recipe_id, rating
+        FROM interactions
+        """
     )
     return [dict(r) for r in rows]
 
@@ -60,19 +71,18 @@ async def recommend(req: RecommendRequest, request: Request):
     pool = await get_pool(request.app)
 
     # Stage 1: CF candidate generation
-
-    cf_artifacts = request.app.state.cf
-
-
     try:
-        cf_candidates = cf_artifacts and __import__("backend.pipeline.cf", fromlist=["score_candidates"]).score_candidates(
-            cf_artifacts, req.user_id, top_k=req.top_n * 10
-        )
-    except KeyError:
-        raise HTTPException(status_code=404, detail="user_id not found in training data")
-
+        interactions = await _fetch_interactions(pool)
+        if not any(int(r["user_id"]) == int(req.user_id) for r in interactions):
+            raise HTTPException(status_code=404, detail="user_id has no interactions in database")
+        cf_candidates = cf_fallback_candidates(interactions, req.user_id, req.top_n * 10)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    if not cf_candidates:
+        raise HTTPException(status_code=404, detail="user_id has no interactions in database")
 
     # User interaction history
     history = await _fetch_user_history(pool, req.user_id)
