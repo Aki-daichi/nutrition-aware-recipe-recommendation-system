@@ -1,50 +1,34 @@
-# Frontend Dashboard
+# Nutrition-Aware Recipe Recommendation System
 
-## 1. Overview
-
-Demo UI for the Nutrition-Aware Recipe Recommendation System (PJK-GM053). It is a single-page app built with plain HTML, CSS, and JavaScript. No build step is required.
+## 1. Project Overview
+Nutrition-Aware Recipe Recommendation System — capstone demo (PJK-GM053). Hybrid cascade: NCF Collaborative Filtering → TF-IDF Content-Based Filtering → Nutrition Scoring.
 
 ## 2. Prerequisites
+- Python 3.13 with venv
+- Node.js (for http-server)
+- PostgreSQL running on port 5433
+- Database: `nutrition_recipe_db` with tables `recipes` and `interactions`
 
-- Backend API running on `http://localhost:8000`
-- Node.js, optional and only needed for `http-server`
+## 3. Backend Setup
+```bash
+# From repo root
+python -m venv venv
+venv\Scripts\activate        # Windows
+pip install -r backend/requirements.txt
+uvicorn backend.main:app --reload
+# Runs on http://localhost:8000
+```
 
-## 3. How to Run
-
-Option A — with http-server, recommended to avoid CORS issues:
-
+## 4. Frontend Setup
 ```bash
 cd frontend-dashboard
 npx http-server . -p 3000
 # Open http://localhost:3000
 ```
 
-Option B — open directly:
-
-```text
-Open frontend-dashboard/index.html in browser
-API calls will use mock data if backend is unreachable
-```
-
-## 4. How to Start the Backend First
-
-```bash
-# From repo root
-uvicorn backend.main:app --reload
-# Runs on http://localhost:8000
-```
-
-## 5. How to Use the Dashboard
-
-- Enter a valid `user_id` from the `interactions` table in PostgreSQL
-- Adjust Top-N, from 5 to 20, and optional nutrition filters
-- Click Submit
-- Results show recipe cards with CF, CBF, Nutrition scores, and final ranking
-
-## 6. Getting a Valid user_id
-
+## 5. Getting a Valid user_id
+Only 19,123 users from the training dataset are supported. Get one from PostgreSQL:
 ```sql
--- Run in PostgreSQL to find active users
 SELECT user_id, COUNT(*) as interactions
 FROM interactions
 GROUP BY user_id
@@ -52,15 +36,20 @@ ORDER BY interactions DESC
 LIMIT 10;
 ```
 
-## 7. Mock Fallback
+## 6. API Endpoints
+- `POST /recommend` — hybrid recommendations
+- `GET /stats` — dataset statistics
+- `GET /recipe/{recipe_id}` — recipe detail
+- `GET /user/{user_id}/history` — user interaction history
 
-If the backend is unreachable, the UI automatically shows mock data so the demo still works without a running server.
+## 7. Model Files Required
+```
+cf/outputs/models/best_cf_model_ncf.pkl
+cf/outputs/models/user2idx.pkl
+cf/outputs/models/item2idx.pkl
+cf/outputs/models/idx2item.pkl
+cbf/outputs/models/best_cbf_model_tfidf.pkl
+```
 
-## 8. API Endpoints Used
-
-- `POST http://localhost:8000/recommend` — main recommendation call
-- `GET http://localhost:8000/stats` — dataset statistics
-
-## 9. Changing the API URL
-
-Edit `app.js`, find `API_BASE_URL` at the top of the file and update it.
+## 8. Environment Variables
+Copy `backend/.env.example` to `.env` in repo root and fill in values.

@@ -73,18 +73,7 @@
     return res.json();
   }
 
-  function mockStats() {
-    const totalRecipes = 231637;
-    const totalUsers = 74277;
-    const totalInteractions = 1132367;
-    const sparsity = 1 - totalInteractions / (totalUsers * totalRecipes);
-    return {
-      total_recipes: totalRecipes,
-      total_users: totalUsers,
-      total_interactions: totalInteractions,
-      sparsity,
-    };
-  }
+
 
   function renderStats(stats) {
     if (!stats) return;
@@ -95,28 +84,7 @@
     els.statSparsity.textContent = `${(stats.sparsity * 100).toFixed(2)}%`;
   }
 
-  function foodcomRecipeNames() {
-    return [
-      "Slow Cooker Chicken Alfredo",
-      "Classic Beef Stroganoff",
-      "Garlic Parmesan Roasted Broccoli",
-      "Lemon Herb Grilled Salmon",
-      "Homemade Chicken Noodle Soup",
-      "Vegetarian Chili with Beans",
-      "Baked Turkey Meatballs",
-      "Spicy Shrimp Tacos",
-      "Honey Mustard Glazed Salmon",
-      "Chocolate Peanut Butter Oatmeal",
-      "Crispy Garlic Chicken Wings",
-      "Creamy Mushroom Pasta",
-      "Thai Peanut Chicken",
-      "Easy Beef Tacos",
-      "Roasted Garlic Mashed Potatoes",
-      "Fresh Tomato Basil Pasta",
-      "Sesame Ginger Beef Bowl",
-      "BBQ Chicken Stuffed Peppers",
-    ];
-  }
+
 
   function escapeHtml(s) {
     const str = String(s);
@@ -149,138 +117,7 @@
     return "Dominant signal: Nutrition scoring";
   }
 
-  function mockRecommendations({ user_id, top_n, min_nutrition_score, max_calories, ref_recipe_id }) {
-    const names = foodcomRecipeNames();
-    const seed = Math.abs(parseInt(user_id, 10) || 1);
-    const pick = (arr, idx) => arr[(idx + seed) % arr.length];
 
-    const tagsPool = [
-      "quick",
-      "family-friendly",
-      "low-carb-ish",
-      "high-protein",
-      "comfort food",
-      "weeknight",
-      "gluten-free-ish",
-      "dairy-free-ish",
-      "spicy",
-      "kid-friendly",
-      "meal prep",
-      "keto-ish",
-      "stovetop",
-      "baked",
-      "healthy-ish",
-      "vegetarian",
-      "seafood",
-      "beef",
-      "chicken",
-    ];
-
-    const ingredientTemplates = [
-      ["olive oil", "onion", "garlic", "chicken breast", "parmesan", "alfredo sauce"],
-      ["lean ground beef", "mushrooms", "sour cream", "beef broth", "egg noodles"],
-      ["broccoli", "garlic", "parmesan", "olive oil", "lemon"],
-      ["salmon", "lemon", "herbs", "olive oil", "garlic"],
-      ["chicken", "carrots", "celery", "noodles", "bay leaf"],
-      ["kidney beans", "black beans", "tomatoes", "onion", "chili powder"],
-      ["turkey", "breadcrumbs", "egg", "garlic", "parmesan"],
-      ["shrimp", "taco seasoning", "lime", "cabbage", "cilantro"],
-      ["salmon", "honey", "mustard", "garlic", "soy sauce"],
-      ["oats", "cocoa powder", "peanut butter", "banana", "milk"],
-      ["chicken wings", "garlic", "butter", "paprika", "salt"],
-      ["mushrooms", "pasta", "cream", "garlic", "parmesan"],
-      ["chicken", "peanut butter", "soy sauce", "ginger", "lime"],
-      ["ground beef", "taco shells", "lettuce", "tomato", "cheddar"],
-      ["potatoes", "garlic", "butter", "milk", "parmesan"],
-      ["tomatoes", "basil", "garlic", "pasta", "olive oil"],
-      ["beef", "sesame oil", "ginger", "soy sauce", "rice"],
-      ["chicken", "bell peppers", "bbq sauce", "cheddar", "onion"],
-    ];
-
-    const recs = [];
-
-    const makeScores = (k) => {
-      const t = (seed + k + (ref_recipe_id ? (ref_recipe_id % 97) : 0)) % 1000;
-      const cf_score = 0.3 + (((t % 500) / 500) * 0.5);
-      const similarity_score = 0.1 + ((((t * 7) % 500) / 500) * 0.5);
-      const nutrition_score = 40 + ((((t * 13) % 500) / 500) * 50);
-      return {
-        cf_score: clamp(cf_score, 0, 1),
-        similarity_score: clamp(similarity_score, 0, 1),
-        nutrition_score: clamp(nutrition_score, 0, 100),
-      };
-    };
-
-    const passes = (scores, calories) => {
-      if (typeof min_nutrition_score === "number" && !Number.isNaN(min_nutrition_score)) {
-        if (scores.nutrition_score < min_nutrition_score) return false;
-      }
-      if (typeof max_calories === "number" && !Number.isNaN(max_calories)) {
-        if (calories > max_calories) return false;
-      }
-      return true;
-    };
-
-    const plausibleCaloriesFromNutrition = (nutrition_score, idx) => {
-      const base = 260 + (idx % 7) * 35;
-      const modifier = (90 - nutrition_score) * 2.2;
-      return clamp(base + modifier, 80, 920);
-    };
-
-    let i = 0;
-    while (recs.length < top_n && i < top_n * 12) {
-      const id = 100000 + ((seed * 13 + i * 77) % 2000000);
-      const name = pick(names, i);
-      const minutes = 12 + ((seed + i) % 45);
-
-      const tags = [
-        tagsPool[(seed + i * 3) % tagsPool.length],
-        tagsPool[(seed + i * 5) % tagsPool.length],
-        tagsPool[(seed + i * 7) % tagsPool.length],
-      ]
-        .filter((v, idx2, arr) => arr.indexOf(v) === idx2)
-        .slice(0, 3);
-
-      const ingredients = ingredientTemplates[(seed + i) % ingredientTemplates.length];
-      const n_ingredients = ingredients.length + ((seed + i) % 3);
-
-      const scoresBase = makeScores(i);
-      const calories = plausibleCaloriesFromNutrition(scoresBase.nutrition_score, i);
-
-      const final_score =
-        (0.42 * scoresBase.cf_score +
-          0.28 * scoresBase.similarity_score +
-          0.30 * (scoresBase.nutrition_score / 100)) * 100;
-
-      const dominant_signal =
-        Math.max(scoresBase.cf_score, scoresBase.similarity_score, scoresBase.nutrition_score / 100) === scoresBase.cf_score
-          ? "CF"
-          : Math.max(scoresBase.cf_score, scoresBase.similarity_score) === scoresBase.similarity_score
-            ? "CBF"
-            : "Nutrition";
-
-      if (passes(scoresBase, calories)) {
-        recs.push({
-          rank: recs.length + 1,
-          recipe_id: id,
-          name,
-          minutes,
-          tags,
-          n_ingredients,
-          calories,
-          nutrition_score: scoresBase.nutrition_score,
-          cf_score: scoresBase.cf_score,
-          similarity_score: scoresBase.similarity_score,
-          final_score,
-          dominant_signal,
-        });
-      }
-
-      i += 1;
-    }
-
-    return recs.slice(0, top_n);
-  }
 
   function renderCards(recommendations) {
     els.cards.innerHTML = "";
@@ -364,16 +201,28 @@
 
   async function postRecommend(payload) {
     const url = `${API_BASE_URL}/recommend`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    let res;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      throw new Error("Cannot reach backend. Make sure uvicorn is running on localhost:8000.");
+    }
 
     if (!res.ok) {
       const body = await safeJson(res);
       const msg = body?.detail || body?.message || `HTTP ${res.status}`;
-      throw new Error(`POST /recommend failed: ${msg}`);
+      
+      if (res.status === 404) {
+        throw new Error("User ID not found in training data. Only 19,123 users from the training dataset are supported.");
+      } else if (res.status === 500) {
+        throw new Error("Server error. Check the backend terminal for details.");
+      } else {
+        throw new Error(msg);
+      }
     }
 
     return res.json();
@@ -427,18 +276,9 @@
       renderCards(data.recommendations);
     } catch (err) {
       hide(els.loading);
-      setStatus("Backend unavailable — using mock demo results.", true);
-      els.error.textContent = `${String(err.message || err)}\n(Showing mock results instead.)`;
+      setStatus("Error loading recommendations.", true);
+      els.error.textContent = String(err.message || err);
       show(els.error);
-
-      const mock = mockRecommendations({
-        user_id,
-        top_n,
-        min_nutrition_score: minNutrition,
-        max_calories: maxCalories,
-        ref_recipe_id: refRecipeId,
-      });
-      renderCards(mock);
     }
   }
 
@@ -491,7 +331,12 @@
 
   function bootstrap() {
     // stats
-    fetchStats().then(renderStats).catch(() => renderStats(mockStats()));
+    fetchStats().then(renderStats).catch(() => {
+      els.statTotalRecipes.textContent = "Statistics unavailable";
+      els.statTotalUsers.textContent = "-";
+      els.statTotalInteractions.textContent = "-";
+      els.statSparsity.textContent = "-";
+    });
 
     // chart
     renderEvalChart();
@@ -508,35 +353,7 @@
 
     els.form?.addEventListener("submit", onSubmit);
 
-    $("#btn-load-mock")?.addEventListener("click", () => {
-      hide(els.error);
-      els.cards.innerHTML = "";
-      hide(els.empty);
 
-      const user_id_raw = els.userId.value.trim();
-      const user_id = parseInt(user_id_raw, 10);
-      const top_n = parseInt(els.topN.value, 10);
-      if (!Number.isFinite(user_id)) {
-        els.error.textContent = "Please enter a valid integer user_id before loading mock results.";
-        show(els.error);
-        return;
-      }
-
-      const minNutrition = els.minNutrition.value.trim() === "" ? null : parseFloat(els.minNutrition.value);
-      const maxCalories = els.maxCalories.value.trim() === "" ? null : parseFloat(els.maxCalories.value);
-      const refRecipeId = els.refRecipeId.value.trim() === "" ? null : parseInt(els.refRecipeId.value, 10);
-
-      renderResultMeta(user_id, top_n);
-      const mock = mockRecommendations({
-        user_id,
-        top_n,
-        min_nutrition_score: minNutrition,
-        max_calories: maxCalories,
-        ref_recipe_id: refRecipeId,
-      });
-      renderCards(mock);
-      setStatus("Mock results loaded.");
-    });
   }
 
   bootstrap();

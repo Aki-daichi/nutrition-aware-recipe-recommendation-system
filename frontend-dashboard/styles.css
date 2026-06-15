@@ -283,3 +283,4 @@ body{
   .table{min-width:0}
 }
 
+[hidden] { display: none !important; }
