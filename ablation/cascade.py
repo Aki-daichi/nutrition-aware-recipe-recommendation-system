@@ -162,3 +162,41 @@ class CascadingRecommender:
             final_scores = stage_scores
             
         return final_scores
+
+class WeightedHybridRecommender:
+    def __init__(self, cf_wrapper, cbf_wrapper, nutrition_scores, idx2item, w_cf=0.5, w_cbf=0.3, w_nutr=0.2):
+        """
+        Weighted Hybrid Recommender.
+        cf_wrapper: CFWrapper instance
+        cbf_wrapper: CBFWrapper instance
+        nutrition_scores: Dict of original recipe ID -> float (0-100 score)
+        idx2item: Dict of CF index -> original recipe ID
+        w_cf: Weight of CF score
+        w_cbf: Weight of CBF score
+        w_nutr: Weight of Nutrition score
+        """
+        self.cf_wrapper = cf_wrapper
+        self.cbf_wrapper = cbf_wrapper
+        self.nutrition_scores = nutrition_scores
+        self.idx2item = idx2item
+        self.w_cf = w_cf
+        self.w_cbf = w_cbf
+        self.w_nutr = w_nutr
+
+    def score_candidates(self, user_id: int, candidate_items: np.ndarray) -> np.ndarray:
+        # CF score (usually [0, 1] from NCF)
+        cf_scores = self.cf_wrapper.score_candidates(user_id, candidate_items)
+        
+        # CBF score (Cosine similarity [0, 1])
+        cbf_scores = self.cbf_wrapper.score_candidates(user_id, candidate_items)
+        
+        # Nutrition score (normalize to [0, 1])
+        nutr_scores = np.zeros(len(candidate_items))
+        for idx, c in enumerate(candidate_items):
+            real_id = self.idx2item.get(c)
+            nutr_scores[idx] = self.nutrition_scores.get(real_id, 50.0)
+        norm_nutr = nutr_scores / 100.0
+        
+        # Blended score
+        return self.w_cf * cf_scores + self.w_cbf * cbf_scores + self.w_nutr * norm_nutr
+

@@ -11,6 +11,19 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# Setup mock modules for missing dependencies (implicit, surprise) to prevent ImportError
+from unittest.mock import MagicMock
+
+class MockImplicitModule(MagicMock):
+    __version__ = "0.7.2"
+
+sys.modules["implicit"] = MockImplicitModule()
+sys.modules["implicit.als"] = MagicMock()
+sys.modules["implicit.bpr"] = MagicMock()
+
+mock_surprise = MagicMock()
+sys.modules["surprise"] = mock_surprise
+
 # To resolve the conflict where both cf and cbf have folders named 'models'
 # we pre-import the cf models and register them in sys.modules as 'models.*'
 import cf.models.ncf_model as cf_ncf
@@ -30,7 +43,66 @@ from cbf.nutrition_extractor import extract_nutrition_features
 from nutrition.scoring import NutritionScorer
 
 # Import our cascading module
-from ablation.cascade import CFWrapper, CBFWrapper, NutritionWrapper, CascadingRecommender
+from ablation.cascade import CFWrapper, CBFWrapper, NutritionWrapper, CascadingRecommender, WeightedHybridRecommender
+
+
+def evaluate_loo_with_nutrition(
+    model,
+    loo_data,
+    idx2item,
+    recipe_nutrition_scores,
+    k_values=(5, 10, 20),
+    verbose=True
+):
+    from cf.evaluator import hit_at_k, reciprocal_rank
+    buckets = {f"HR@{k}": [] for k in k_values}
+    buckets["MRR"] = []
+    buckets["Avg_Nutrition"] = []
+
+    n = len(loo_data)
+    report_every = max(1, n // 5)
+
+    for idx, entry in enumerate(loo_data):
+        u          = entry["u"]
+        candidates = entry["candidates"]   # np.ndarray, shape (1 + n_neg,)
+        label_idx  = entry["label_idx"]    # position of pos_item in candidates
+
+        # Get scores from model
+        scores = model.score_candidates(u, candidates)  # shape: (n_candidates,)
+
+        # Rank by descending score → list of candidate positions
+        ranked_positions = np.argsort(scores)[::-1].tolist()
+
+        # Accumulate metrics
+        for k in k_values:
+            buckets[f"HR@{k}"].append(hit_at_k(ranked_positions, label_idx, k))
+        buckets["MRR"].append(reciprocal_rank(ranked_positions, label_idx))
+        
+        # Calculate nutrition score of top 10 recommended recipes
+        top_10_cf_idxs = [candidates[pos] for pos in ranked_positions[:10]]
+        top_10_recipe_ids = [idx2item.get(c) for c in top_10_cf_idxs]
+        top_10_nutrition = [recipe_nutrition_scores.get(rid, 50.0) for rid in top_10_recipe_ids if rid is not None]
+        avg_nutr = np.mean(top_10_nutrition) if top_10_nutrition else 50.0
+        buckets["Avg_Nutrition"].append(avg_nutr)
+
+        if verbose and (idx + 1) % report_every == 0:
+            pct = (idx + 1) / n * 100
+            print(f"  Evaluating… {idx+1:,}/{n:,} ({pct:.0f}%)")
+
+    results = {key: float(np.mean(vals)) for key, vals in buckets.items()}
+    return results
+
+def custom_metrics_to_dataframe(results: dict[str, dict]) -> pd.DataFrame:
+    rows = []
+    for model_name, metrics in results.items():
+        row = {"Model": model_name}
+        row.update(metrics)
+        rows.append(row)
+    df = pd.DataFrame(rows).set_index("Model")
+    ordered_cols = ["HR@5", "HR@10", "HR@20", "MRR", "Avg_Nutrition"]
+    # Keep only columns that exist
+    ordered_cols = [c for c in ordered_cols if c in df.columns]
+    return df[ordered_cols]
 
 def main():
     print("=" * 60)
@@ -165,37 +237,73 @@ def main():
         }
     ]
     
+    # 6.2 Define Weighted Hybrid configurations (grid search)
+    weight_configs = []
+    # Generasi bobot w_cf dari 0.4 s.d 1.0, w_cbf dan w_nutr menyesuaikan (sum to 1.0)
+    for cf_w_int in range(4, 11):
+        w_cf = cf_w_int / 10.0
+        remaining = round(1.0 - w_cf, 1)
+        for cbf_w_int in range(0, int(remaining * 10) + 1):
+            w_cbf = cbf_w_int / 10.0
+            w_nutr = round(remaining - w_cbf, 1)
+            weight_configs.append((w_cf, w_cbf, w_nutr))
+
+    for w_cf, w_cbf, w_nutr in weight_configs:
+        hybrid_recommender = WeightedHybridRecommender(
+            cf_wrapper=cf_wrapper,
+            cbf_wrapper=cbf_wrapper,
+            nutrition_scores=recipe_nutrition_scores,
+            idx2item=idx2item,
+            w_cf=w_cf,
+            w_cbf=w_cbf,
+            w_nutr=w_nutr
+        )
+        configurations.append({
+            "name": f"Hybrid (cf={w_cf:.1f}, cbf={w_cbf:.1f}, nutr={w_nutr:.1f})",
+            "model": hybrid_recommender
+        })
+
     # 7. Evaluate each configuration
     all_results = {}
     
     print("\nStarting evaluation of ablation study configurations...")
     for config in configurations:
         name = config["name"]
-        stages = config["stages"]
+        stages = config.get("stages")
         
         print(f"\nEvaluating: {name}")
-        # Build Cascading model
-        model = CascadingRecommender(stages)
+        # Build Cascading model if stages is specified, else use the model directly
+        if stages is not None:
+            model = CascadingRecommender(stages)
+        else:
+            model = config["model"]
         
         start_time = time.time()
-        # Run LOO evaluation
-        metrics = evaluate_loo(model, loo_data, k_values=(5, 10, 20), verbose=True)
+        # Run LOO evaluation with nutrition
+        metrics = evaluate_loo_with_nutrition(
+            model, 
+            loo_data, 
+            idx2item, 
+            recipe_nutrition_scores, 
+            k_values=(5, 10, 20), 
+            verbose=True
+        )
         elapsed = time.time() - start_time
         
         all_results[name] = metrics
-        print(f"Done in {elapsed:.1f}s. HR@10: {metrics['HR@10']:.4f} | MRR: {metrics['MRR']:.4f}")
+        print(f"Done in {elapsed:.1f}s. HR@10: {metrics['HR@10']:.4f} | MRR: {metrics['MRR']:.4f} | Avg Nutrition: {metrics['Avg_Nutrition']:.4f}")
         
     # 8. Export metrics
-    results_df = metrics_to_dataframe(all_results)
+    results_df = custom_metrics_to_dataframe(all_results)
     
-    print("\n" + "=" * 70)
+    print("\n" + "=" * 75)
     print("                    ABLATION STUDY METRIC RESULTS")
-    print("=" * 70)
+    print("=" * 75)
     print(results_df.to_string(float_format=lambda x: f"{x:.4f}"))
-    print("=" * 70)
+    print("=" * 75)
     
     # Save output
-    output_results_dir = PROJECT_ROOT / "cf" / "outputs" / "results"
+    output_results_dir = PROJECT_ROOT / "ablation" / "outputs" / "results"
     output_results_dir.mkdir(parents=True, exist_ok=True)
     csv_file = output_results_dir / "ablation_study_results.csv"
     results_df.to_csv(csv_file)
