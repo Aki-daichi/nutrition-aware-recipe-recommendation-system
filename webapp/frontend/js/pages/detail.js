@@ -18,18 +18,18 @@ export const DetailPage = {
     container.innerHTML = `
       ${getNavbarHtml()}
       
-      <main class="detail-content" style="max-width: 1000px; margin: 0 auto; padding: 40px 20px; width: 100%;">
+      <main class="detail-content">
         <!-- Breadcrumbs & Back Button -->
-        <div style="margin-bottom: 24px; display: flex; align-items: center; gap: 8px; font-size: 13px;">
-          <a href="#/" style="color: var(--text-secondary); display: inline-flex; align-items: center; gap: 4px;">
+        <div class="detail-breadcrumbs">
+          <a href="#/" class="detail-back-link">
             <i class="ph-bold ph-arrow-left"></i> Kembali ke Beranda
           </a>
-          <span style="color: var(--border);">&middot;</span>
-          <span style="color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px;" id="recipe-breadcrumb">Resep</span>
+          <span class="detail-breadcrumb-separator">&middot;</span>
+          <span class="detail-breadcrumb-title" id="recipe-breadcrumb">Resep</span>
         </div>
 
-        <div id="recipe-detail-loading" style="text-align: center; color: var(--text-secondary); padding: 40px 0;">
-          <i class="ph-bold ph-spinner spinner" style="font-size: 32px; margin-bottom: 12px;"></i>
+        <div id="recipe-detail-loading" class="detail-loading">
+          <i class="ph-bold ph-spinner spinner"></i>
           <p>Memuat detail resep...</p>
         </div>
 
@@ -55,7 +55,7 @@ export const DetailPage = {
 
       // Build tags
       const tagsHtml = recipe.tags.slice(0, 10).map(tag => `
-        <span class="badge" style="background: var(--canvas); color: var(--text-secondary); font-size: 10px; border: 1px solid var(--border); padding: 4px 10px;">
+        <span class="badge detail-tag-badge">
           ${tag}
         </span>
       `).join(' ');
@@ -87,12 +87,12 @@ export const DetailPage = {
         }
 
         return `
-          <div style="margin-bottom: 12px;">
-            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-              <span><strong>${nut.name}</strong> <span style="font-size: 11px; color: var(--text-secondary);">(${nut.desc})</span></span>
-              <span style="font-family: var(--font-mono); font-weight: 600;">${nut.value} ${nut.unit}</span>
+          <div class="nutrition-item-row">
+            <div class="nutrition-item-label-row">
+              <span><strong>${nut.name}</strong> <span class="nutrition-item-desc">(${nut.desc})</span></span>
+              <span class="nutrition-item-val">${nut.value} ${nut.unit}</span>
             </div>
-            <div class="nutrition-track" style="height: 4px; margin-top: 0; margin-bottom: 0;">
+            <div class="nutrition-track thin-track">
               <div class="nutrition-fill ${colorClass}" style="width: ${Math.min(nut.value, 100)}%"></div>
             </div>
           </div>
@@ -103,93 +103,93 @@ export const DetailPage = {
       let scoreWidgetHtml = '';
       if (recInfo) {
         scoreWidgetHtml = `
-          <div class="card" style="padding: 16px; background: var(--canvas); border-radius: var(--radius-md); margin-bottom: 24px; border: 1px solid var(--border);">
-            <h4 style="font-family: var(--font-sans); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 12px;">Analisis Skor Rekomendasi</h4>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center;">
-              <div style="border-right: 1px solid var(--border); padding-right: 6px;">
-                <div style="font-family: var(--font-mono); font-size: 14px; font-weight: 700;">${recInfo.cf_score.toFixed(2)}</div>
-                <div style="font-size: 10px; color: var(--text-secondary);">CF Score</div>
+          <div class="card score-widget-card">
+            <h4 class="score-widget-title">Analisis Skor Rekomendasi</h4>
+            <div class="analysis-stats-grid">
+              <div class="analysis-stat-block border-right">
+                <div class="analysis-stat-val">${recInfo.cf_score.toFixed(2)}</div>
+                <div class="analysis-stat-label">CF Score</div>
               </div>
-              <div style="border-right: 1px solid var(--border); padding-right: 6px;">
-                <div style="font-family: var(--font-mono); font-size: 14px; font-weight: 700;">${recInfo.similarity_score.toFixed(2)}</div>
-                <div style="font-size: 10px; color: var(--text-secondary);">CBF Score</div>
+              <div class="analysis-stat-block border-right">
+                <div class="analysis-stat-val">${recInfo.similarity_score.toFixed(2)}</div>
+                <div class="analysis-stat-label">CBF Score</div>
               </div>
-              <div>
-                <div style="font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--pale-green-text);">${recInfo.nutrition_score.toFixed(1)}</div>
-                <div style="font-size: 10px; color: var(--text-secondary);">Gizi</div>
+              <div class="analysis-stat-block">
+                <div class="analysis-stat-val green">${recInfo.nutrition_score.toFixed(1)}</div>
+                <div class="analysis-stat-label">Gizi</div>
               </div>
             </div>
-            <hr style="margin: 10px 0; border-color: var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+            <hr class="score-widget-divider">
+            <div class="score-widget-row">
               <span>Sinyal Dominan:</span>
-              <strong style="font-family: var(--font-sans); color: var(--text-primary);">${recInfo.dominant_signal === 'CF' ? 'Minat Pengguna (CF)' : recInfo.dominant_signal === 'CBF' ? 'Kemiripan Bahan (CBF)' : 'Nilai Gizi (Nutrition)'}</strong>
+              <strong class="score-widget-val">${recInfo.dominant_signal === 'CF' ? 'Minat Pengguna (CF)' : recInfo.dominant_signal === 'CBF' ? 'Kemiripan Bahan (CBF)' : 'Nilai Gizi (Nutrition)'}</strong>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-top: 4px;">
+            <div class="score-widget-row highlight">
               <span><strong>Skor Akhir:</strong></span>
-              <strong style="font-family: var(--font-mono); font-size: 15px; color: var(--text-primary);">${recInfo.final_score.toFixed(4)}</strong>
+              <strong class="score-widget-final-val">${recInfo.final_score.toFixed(4)}</strong>
             </div>
           </div>
         `;
       }
 
       const ingredientsHtml = recipe.ingredients.map(ing => `
-        <li style="list-style: none; display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; font-size: 14px;">
-          <input type="checkbox" style="margin-top: 4px; accent-color: var(--text-primary); cursor: pointer;">
-          <span style="cursor: pointer;" onclick="const cb = this.previousElementSibling; cb.checked = !cb.checked;">${ing}</span>
+        <li class="ingredient-item">
+          <input type="checkbox" class="ingredient-checkbox">
+          <span class="ingredient-text" onclick="const cb = this.previousElementSibling; cb.checked = !cb.checked;">${ing}</span>
         </li>
       `).join('');
 
       const stepsHtml = recipe.steps.map((step, idx) => `
-        <div style="display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start;">
-          <div style="font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text-secondary); background: var(--canvas); width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <div class="step-item">
+          <div class="step-number">
             ${idx + 1}
           </div>
-          <p style="margin: 0; font-size: 14px; line-height: 1.6; color: var(--text-primary); flex: 1;">${step}</p>
+          <p class="step-text">${step}</p>
         </div>
       `).join('');
 
       detailDiv.innerHTML = `
-        <div style="margin-bottom: 24px;">
-          <h2 style="font-size: 2.2rem; font-family: var(--font-serif); font-weight: 500; margin-bottom: 12px; line-height: 1.2;">${cleanName}</h2>
-          <p style="font-size: 14px; color: var(--text-secondary); font-style: italic; line-height: 1.5; margin-bottom: 16px;">
+        <div class="recipe-detail-header-block">
+          <h2 class="recipe-detail-title">${cleanName}</h2>
+          <p class="recipe-detail-desc">
             ${recipe.description || 'Tidak ada deskripsi untuk resep ini.'}
           </p>
-          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 24px;">
+          <div class="recipe-detail-tags">
             ${tagsHtml}
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px;">
-          <div class="card" style="padding: 16px; text-align: center; border-radius: var(--radius-md);">
-            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Waktu</div>
-            <strong style="font-size: 16px;">${recipe.minutes} Menit</strong>
+        <div class="recipe-stats-grid">
+          <div class="card stat-card">
+            <div class="stat-card-label">Waktu</div>
+            <strong class="stat-card-val">${recipe.minutes} Menit</strong>
           </div>
-          <div class="card" style="padding: 16px; text-align: center; border-radius: var(--radius-md);">
-            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Total Bahan</div>
-            <strong style="font-size: 16px;">${recipe.n_ingredients} Bahan</strong>
+          <div class="card stat-card">
+            <div class="stat-card-label">Total Bahan</div>
+            <strong class="stat-card-val">${recipe.n_ingredients} Bahan</strong>
           </div>
-          <div class="card" style="padding: 16px; text-align: center; border-radius: var(--radius-md);">
-            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Kalori</div>
-            <strong style="font-size: 16px;">${Math.round(nutDetails.calories)} kkal</strong>
+          <div class="card stat-card">
+            <div class="stat-card-label">Kalori</div>
+            <strong class="stat-card-val">${Math.round(nutDetails.calories)} kkal</strong>
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; margin-bottom: 40px;">
+        <div class="recipe-detail-grid">
           <!-- Left Column: Nutrition & Ingredients -->
           <div>
             ${scoreWidgetHtml}
 
-            <div style="margin-bottom: 32px;">
-              <h3 style="font-size: 1.4rem; font-family: var(--font-serif); margin-bottom: 16px;">Profil Gizi</h3>
-              <div class="card" style="padding: 20px; border-radius: var(--radius-md);">
+            <div class="recipe-detail-section">
+              <h3 class="section-heading">Profil Gizi</h3>
+              <div class="card nutrition-profile-card">
                 ${nutritionListHtml}
               </div>
             </div>
 
-            <div>
-              <h3 style="font-size: 1.4rem; font-family: var(--font-serif); margin-bottom: 16px;">Bahan-bahan</h3>
-              <div class="card" style="padding: 20px; border-radius: var(--radius-md);">
-                <ul style="padding-left: 0; margin-bottom: 0;">
+            <div class="recipe-detail-section">
+              <h3 class="section-heading">Bahan-bahan</h3>
+              <div class="card ingredients-card">
+                <ul class="ingredients-list">
                   ${ingredientsHtml}
                 </ul>
               </div>
@@ -198,20 +198,20 @@ export const DetailPage = {
 
           <!-- Right Column: Cooking Steps & Rating -->
           <div>
-            <div style="margin-bottom: 32px;">
-              <h3 style="font-size: 1.4rem; font-family: var(--font-serif); margin-bottom: 16px;">Instruksi Memasak</h3>
-              <div class="card" style="padding: 24px; border-radius: var(--radius-md);">
+            <div class="recipe-detail-section">
+              <h3 class="section-heading">Instruksi Memasak</h3>
+              <div class="card steps-card">
                 ${stepsHtml}
               </div>
             </div>
 
-            <div class="card" style="padding: 24px; border-radius: var(--radius-md); border-top: 2px solid var(--text-primary);">
-              <h3 style="font-size: 1.3rem; font-family: var(--font-serif); margin-bottom: 8px;">Beri Ulasan Resep Ini</h3>
-              <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.4; margin-bottom: 18px;">
+            <div class="card rating-card">
+              <h3 class="rating-card-title">Beri Ulasan Resep Ini</h3>
+              <p class="rating-card-subtitle">
                 Berikan rating untuk memperbarui model Collaborative Filtering personalisasi Anda secara dinamis.
               </p>
               
-              <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div class="rating-card-footer">
                 <div class="rating-stars" id="star-rating-widget">
                   <i class="ph-fill ph-star" data-value="1"></i>
                   <i class="ph-fill ph-star" data-value="2"></i>
@@ -219,7 +219,7 @@ export const DetailPage = {
                   <i class="ph-fill ph-star" data-value="4"></i>
                   <i class="ph-fill ph-star" data-value="5"></i>
                 </div>
-                <button type="button" class="btn btn-primary" id="btn-submit-rating" disabled style="border-radius: 20px; padding: 8px 20px;">Kirim Rating</button>
+                <button type="button" class="btn btn-primary rating-submit-btn" id="btn-submit-rating" disabled>Kirim Rating</button>
               </div>
             </div>
           </div>

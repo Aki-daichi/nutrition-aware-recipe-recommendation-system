@@ -16,27 +16,27 @@ export const SearchPage = {
     container.innerHTML = `
       ${getNavbarHtml()}
       
-      <main class="search-content" style="max-width: 1200px; margin: 0 auto; padding: 40px 20px; width: 100%;">
-        <div style="margin-bottom: 24px;">
-          <h2 style="font-size: 2rem; font-family: var(--font-serif); font-weight: 500; margin-bottom: 8px;">Hasil Pencarian</h2>
-          <p style="color: var(--text-secondary); font-size: 14px;">
-            Menampilkan resep sehat untuk kata kunci: <strong style="color: var(--text-primary);">"${searchQuery}"</strong>
+      <main class="search-content">
+        <div class="search-header-block">
+          <h2 class="search-title">Hasil Pencarian</h2>
+          <p class="search-subtitle">
+            Menampilkan resep sehat untuk kata kunci: <strong class="search-query-highlight">"${searchQuery}"</strong>
           </p>
         </div>
 
-        <div id="search-loading" style="text-align: center; color: var(--text-secondary); padding: 40px 0;">
-          <i class="ph-bold ph-spinner spinner" style="font-size: 32px; margin-bottom: 12px;"></i>
+        <div id="search-loading" class="search-loading">
+          <i class="ph-bold ph-spinner spinner"></i>
           <p>Mencari resep...</p>
         </div>
 
-        <div id="search-results-grid" class="recommendation-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px; display: none;">
+        <div id="search-results-grid" class="recommendation-grid" style="display: none;">
           <!-- Search results render here -->
         </div>
 
-        <div id="search-empty" style="display: none; text-align: center; padding: 40px 0; color: var(--text-secondary);">
-          <i class="ph-bold ph-magnifying-glass" style="font-size: 48px; margin-bottom: 16px; color: var(--border);"></i>
-          <p style="font-size: 15px;">Tidak ditemukan resep sehat yang cocok dengan kata kunci "${searchQuery}".</p>
-          <a href="#/" class="btn btn-secondary" style="margin-top: 16px;">Kembali ke Beranda</a>
+        <div id="search-empty" class="search-empty" style="display: none;">
+          <i class="ph-bold ph-magnifying-glass"></i>
+          <p>Tidak ditemukan resep sehat yang cocok dengan kata kunci "${searchQuery}".</p>
+          <a href="#/" class="btn btn-secondary">Kembali ke Beranda</a>
         </div>
       </main>
     `;
@@ -82,7 +82,7 @@ export const SearchPage = {
       return `
         <div class="recipe-card" data-id="${recipe.recipe_id || recipe.id}">
           <div class="recipe-card-img-placeholder">
-            <img src="assets/food_placeholder.png" alt="${recipe.name}" style="width: 100%; height: 100%; object-fit: cover;">
+            <img src="assets/food_placeholder.png" alt="${recipe.name}" class="recipe-card-img">
           </div>
           <div class="recipe-card-body">
             <h4 class="recipe-card-title">${recipe.name}</h4>
@@ -93,10 +93,10 @@ export const SearchPage = {
               <span>&middot;</span>
               <span>${Math.round(calories)} kkal</span>
             </div>
-            <div style="margin-top: auto;">
-              <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px; font-weight: 500;">
+            <div class="recipe-card-score-container">
+              <div class="recipe-card-score-row">
                 <span>Kesehatan</span>
-                <span style="font-weight: 600;">${Math.round(score)}</span>
+                <span class="recipe-card-score-val">${Math.round(score)}</span>
               </div>
               ${getNutritionBarHtml(score)}
             </div>

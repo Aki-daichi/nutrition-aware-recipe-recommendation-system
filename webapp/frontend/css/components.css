@@ -513,3 +513,48 @@
   }
 }
 
+/* Mobile responsive component tweaks */
+@media (max-width: 480px) {
+  .login-wrapper {
+    padding: 20px 12px;
+    min-height: calc(100vh - 80px);
+  }
+  .login-card {
+    padding: 24px 16px;
+    border-radius: var(--radius-md);
+  }
+  .logo-large {
+    font-size: 1.8rem;
+  }
+  .logo-large i {
+    font-size: 2.2rem;
+  }
+  .demo-btn {
+    padding: 8px 12px;
+    gap: 10px;
+  }
+  .demo-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  .demo-name {
+    font-size: 12px;
+  }
+  .demo-desc {
+    font-size: 10px;
+  }
+  
+  .horizontal-scroll {
+    gap: 16px;
+    padding: 8px 0 16px;
+  }
+  .recipe-card {
+    flex: 0 0 200px; /* slightly smaller cards on mobile */
+  }
+  .recipe-card-title {
+    font-size: 0.95rem;
+    height: 2.4rem;
+  }
+}
+
